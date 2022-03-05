@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Display a map</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js"></script>
+    <style>
+        body { margin:0; padding:0; }
+        #map { position:absolute; top:0; bottom:0; width:100%; }
+
+        .map-overlay {
+		    font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+		    position: absolute;
+		    width: 17%;
+		    top: 0;
+		    left: 0;
+		    padding: 10px;
+		}
+
+		.map-overlay .map-overlay-inner {
+		    background-color: #fff;
+		    box-shadow:0 1px 2px rgba(0, 0, 0, 0.20);
+		    border-radius: 3px;
+		    padding: 10px;
+		    margin-bottom: 10px;
+		}
+
+		.map-overlay table {
+		    border: none;
+		    width: 100%;
+		}
+
+		.map-overlay h2 {
+		    line-height: 24px;
+		    display: block;
+		    margin: 0 0 10px;           
+        }
+
+        #features {
+            top: 0;
+            height: 100px;
+            margin-top: 20px;
+            width: 250px;
+        }
+
+        #legend {
+            padding: 10px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            line-height: 18px;
+            height: 150px;
+            margin-bottom: 40px;
+            width: 100px;
+        }
+
+        .legend-key {
+            display: inline-block;
+            border-radius: 20%;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div id='map'></div>
+
+<div class='map-overlay'>
+    <div class='map-overlay-inner'>
+        <h2 id="inpe-brazilian-amazon-fires-1-5z5qyr">chart</h2>
+	</div>
+</div>
+
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoidWNmbmhjaCIsImEiOiJja3lrazVpdmkyNWl2MnZzZXB3ZDB3NHA3In0._zxeE9Xr4_NYgQIwWS9x3w'; // Put your Mapbox Public Access token here
+
+    // Load a new map in the 'map' HTML div
+    var map = new mapboxgl.Map({
+    container: 'map', // container id
+    style: 'mapbox://styles/ucfnhch/cl0d5y7da000p14mqrj9y0xng', // stylesheet location
+    center: [-63,-5], // starting position [lng, lat]
+    zoom: 4.5 // starting zoom
+	
+    });
+
+    map.on('load', () => {
+		const layers = map.getStyle().layers;
+// Find the index of the first symbol layer in the map style.
+		let firstSymbolId;
+		for (const layer of layers) {
+		if (layer.type === 'symbol') {
+			firstSymbolId = layer.id;
+			break;
+		}
+}
+        map.addSource('inpe_brazilian_amazon_fires_1-5z5qyr',{
+            type:'vector',
+            url: 'mapbox://ucfnhch.dy2087z3'
+        });
+        map.addLayer({                  // Add the line highlight layer. This layer has a filter, which initially is empty.
+                'id': 'wildfire',
+                'type': 'circle',
+                'source':'inpe_brazilian_amazon_fires_1-5z5qyr',
+                'source-layer':'inpe_brazilian_amazon_fires_1-5z5qyr',
+				'layout': {},
+                'paint': {
+                    'circle-color':{
+                                        property: 'firespots',
+                                        type:'exponential',
+                                        stops: [
+                                            [1, "#fe5a01"],
+                                            [5000, "#eb2700"],
+                                            [37926, "#8a0000"]
+                                            ]
+                                    },
+                    'circle-radius': {
+                        property: 'firespots',
+                        type: 'exponential',
+                        stops: [
+                            [{zoom: 1, value: 1}, 2],
+                            [{zoom: 1, value: 5000}, 2],
+                            [{zoom: 1, value: 37926}, 20],
+                            [{zoom: 4, value: 1}, 8],
+                            [{zoom: 4, value: 5000}, 8],
+                            [{zoom: 4, value: 37926}, 80],
+                            [{zoom: 20, value: 1}, 16],
+                            [{zoom: 20, value: 5000}, 16],
+                            [{zoom: 20, value: 37926}, 160]
+                        ]
+                    },
+                    'circle-opacity': 0.6,  //Opacity set to zero
+                    'circle-stroke-width': 0,
+                    'circle-stroke-color': '#999',
+                    'circle-stroke-opacity': 1,
+                }
+            },
+			firstSymbolId
+		);
+                        // Create a popup, but don't add it to the map yet.
+        var popup = new mapboxgl.Popup({
+            closeButton: false,
+            closeOnClick: false
+        });
+
+        map.on('mouseenter', 'wildfire', function(e) {
+            // Change the cursor style as a UI indicator.
+            map.getCanvas().style.cursor = 'pointer';
+
+            var coordinates = e.features[0].geometry.coordinates.slice();
+            var description = "<h3>State: " + e.features[0].properties.state + "</h3><h3>Firespots: " + e.features[0].properties.firespots + "</h3>";
+
+            popup
+                .setLngLat(coordinates)
+                .setHTML(description)
+                .addTo(map);
+            });
+
+
+        map.on('mouseleave', 'wildfire', function() {
+                map.getCanvas().style.cursor = '';
+                popup.remove();
+            });  
+    });
+</script>
+
+</body>
+</html>
